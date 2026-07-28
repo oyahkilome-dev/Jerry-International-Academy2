@@ -1,10 +1,8 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
-
-// @ts-ignore
 import multer from 'multer';
+import { addMedia, addGalleryImage } from '../../../src/db.js';
 
-// @ts-ignore
 const upload = multer({ storage: multer.memoryStorage() });
 
 export const config = {
@@ -50,7 +48,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const fileExt = file.originalname?.split('.').pop() || 'tmp';
     const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
-    // Upload path in the bucket
     const filePath = `public/${fileName}`;
 
     const { data, error } = await supabase.storage
@@ -67,8 +64,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { data: urlData } = supabase.storage.from('media').getPublicUrl(filePath);
     
     try {
-        // @ts-ignore
-        const { addMedia, addGalleryImage } = await import('../../../src/db.ts');
         const isImage = file.mimetype.startsWith('image/');
         const type = isImage ? 'image' : 'video';
         
@@ -81,7 +76,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           originalName: file.originalname
         });
 
-        // Also add to gallery if it's an image or requested
+        // Also add to gallery if it's an image
         if (isImage) {
             addGalleryImage({
                 url: urlData.publicUrl,
@@ -90,7 +85,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
     } catch (e) {
         console.error('Failed to add media to database', e);
-        // Fail the request if database insertion fails
         return res.status(500).json({ success: false, message: 'Upload succeeded but database insertion failed.' });
     }
 

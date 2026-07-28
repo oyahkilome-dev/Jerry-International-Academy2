@@ -310,7 +310,13 @@ const app = express();
         size: file.size,
         originalName: file.originalname
       });
-
+      if (isImage) {
+        try {
+          addGalleryImage({ url: publicUrl, category: req.body.category || 'General' });
+        } catch(e) {
+          console.error("Failed to add to gallery_images", e);
+        }
+      }
       res.json({ success: true, url: publicUrl });
     } catch (err: any) {
       console.error('Upload Error:', err);
