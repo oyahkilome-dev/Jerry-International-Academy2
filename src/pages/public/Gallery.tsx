@@ -6,14 +6,21 @@ export default function Gallery() {
   const [videos, setVideos] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<'images' | 'videos'>('images');
 
-  useEffect(() => {
+    useEffect(() => {
+    fetch('/api/gallery')
+      .then(res => res.json())
+      .then(data => {
+        setImages(data || []);
+      })
+      .catch(console.error);
+
     fetch('/api/media')
       .then(res => res.json())
       .then(data => {
-        const imageMedia = data.filter((m: any) => m.type === 'image');
-        const videoMedia = data.filter((m: any) => m.type === 'video');
-        setImages(imageMedia);
-        setVideos(videoMedia);
+        if (Array.isArray(data)) {
+          const videoMedia = data.filter((m: any) => m.type === 'video');
+          setVideos(videoMedia);
+        }
       })
       .catch(console.error);
   }, []);
@@ -72,13 +79,13 @@ export default function Gallery() {
                   <div key={img.id || idx} className="group relative rounded-2xl overflow-hidden bg-white shadow-sm border border-slate-100 aspect-square">
                     <img 
                       src={img.url} 
-                      alt={(img.originalName || img.name) || `Gallery ${idx}`} 
+                      alt={img.category || `Gallery ${idx}`} 
                       className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700" 
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-6">
                       <div>
-                        <span className="text-white font-medium block truncate" title={(img.originalName || img.name)}>{(img.originalName || img.name) || 'Image'}</span>
-                        {img.description && <span className="text-white/80 text-sm block mt-1 line-clamp-2">{img.description}</span>}
+                        <span className="text-white font-medium block truncate" title={img.category || 'Image'}>{img.category || 'Image'}</span>
+                        
                       </div>
                     </div>
                   </div>
