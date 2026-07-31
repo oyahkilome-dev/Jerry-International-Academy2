@@ -1,24 +1,27 @@
 const fs = require('fs');
 let code = fs.readFileSync('server.ts', 'utf8');
-code = code.replace(`  app.post('/api/admin/media', verifyToken, (req, res) => {
-    try {
-      addMedia(req.body);
-      res.json({ success: true });
-    } catch(err) {
-      console.error(err);
-      res.status(500).json({ success: false });
-    }
-  });`, `  app.post('/api/admin/media', verifyToken, (req, res) => {
-    try {
-      addMedia(req.body);
-      const isImage = req.body.type === 'image' || (req.body.url && req.body.url.match(/\\.(jpg|jpeg|png|gif|webp)$/i));
-      if (isImage) {
-        addGalleryImage({ url: req.body.url, category: req.body.category || 'General' });
+
+const target = `  app.get('/api/gallery', (req, res) => {
+    res.json(getGalleryImages());
+  });`;
+
+const replacement = `  app.get('/api/gallery', async (req, res) => {
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      try {
+        const { data, error } = await supabase.from('gallery_images').select('*').order('created_at', { ascending: false });
+        if (!error && data) {
+          return res.json(data);
+        }
+      } catch(e) {
+        console.error("Error fetching gallery from Supabase", e);
       }
-      res.json({ success: true });
-    } catch(err) {
-      console.error(err);
-      res.status(500).json({ success: false });
     }
-  });`);
+    // Fallback to SQLite
+    res.json(getGalleryImages());
+  });`;
+
+code = code.replace(target, replacement);
+
 fs.writeFileSync('server.ts', code);
+console.log("server.ts patched");

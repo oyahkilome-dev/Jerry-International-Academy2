@@ -78,10 +78,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         // Also add to gallery if it's an image
         if (isImage) {
-            addGalleryImage({
-                url: urlData.publicUrl,
-                category: body.category || 'General'
-            });
+            try {
+              const { error: dbError } = await supabase.from('gallery_images').insert([
+                { url: urlData.publicUrl, category: body.category || 'General' }
+              ]);
+              if (dbError) console.error("Error inserting into Supabase gallery_images:", dbError);
+            } catch (err) {
+              console.error("Failed to insert into Supabase gallery_images", err);
+            }
+            
+            // Also write to local SQLite just in case
+            try {
+              addGalleryImage({
+                  url: urlData.publicUrl,
+                  category: body.category || 'General'
+              });
+            } catch (e) {
+              console.error("Local SQLite error", e);
+            }
         }
     } catch (e) {
         console.error('Failed to add media to database', e);

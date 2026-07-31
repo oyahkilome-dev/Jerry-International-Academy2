@@ -2,6 +2,10 @@
   "framework": "vite",
   "rewrites": [
     {
+      "source": "/api/gallery",
+      "destination": "/api/gallery/index"
+    },
+    {
       "source": "/api/admin/media/upload",
       "destination": "/api/admin/media/upload"
     },
