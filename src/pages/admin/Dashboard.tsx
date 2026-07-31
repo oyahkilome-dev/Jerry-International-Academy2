@@ -8,7 +8,7 @@ export default function AdminDashboard() {
   useEffect(() => {
     fetch('/api/media')
       .then(res => res.json())
-      .then(data => setMedia(data.slice(0, 5)))
+      .then(data => { if (Array.isArray(data)) setMedia(data.slice(0, 5)); })
       .catch(console.error);
   }, []);
 

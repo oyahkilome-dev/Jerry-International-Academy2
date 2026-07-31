@@ -270,9 +270,64 @@ const app = express();
     res.json({ success: true });
   });
 
-  app.delete('/api/admin/gallery/:id', verifyToken, (req, res) => {
-    deleteGalleryImage(Number(req.params.id));
-    res.json({ success: true });
+  app.delete('/api/admin/gallery/:id', verifyToken, async (req, res) => {
+    try {
+      const id = req.params.id;
+      const settings = getSupabaseSettings();
+      const supabase = getSupabaseClient();
+      const bucketName = settings.bucket || 'media';
+      const serviceRoleKey = settings.serviceRoleKey;
+
+      if (supabase && serviceRoleKey) {
+        const adminSupabase = createClient(settings.url, serviceRoleKey);
+        
+        // 1. Get the image URL from gallery_images
+        const { data: imgData, error: fetchError } = await adminSupabase
+          .from('gallery_images')
+          .select('url')
+          .eq('id', id)
+          .single();
+
+        if (!fetchError && imgData && imgData.url) {
+          const imageUrl = imgData.url;
+          const bucketPath = `/${bucketName}/`;
+          const bucketIndex = imageUrl.indexOf(bucketPath);
+          if (bucketIndex !== -1) {
+            const filePath = imageUrl.substring(bucketIndex + bucketPath.length);
+            
+            // 2. Delete from Storage FIRST to prevent orphaned files
+            const { error: storageError } = await adminSupabase.storage
+              .from(bucketName)
+              .remove([filePath]);
+
+            if (storageError) {
+              console.error('Storage deletion failed:', storageError);
+              return res.status(500).json({ success: false, message: 'Failed to delete file from storage.' });
+            }
+            
+            // 3. Delete from Database
+            const { error: dbError } = await adminSupabase
+              .from('gallery_images')
+              .delete()
+              .eq('id', id);
+              
+            if (dbError) {
+              console.error('Database deletion failed:', dbError);
+            }
+          }
+        }
+      }
+
+      // SQLite fallback / cleanup
+      try {
+        deleteGalleryImage(Number(id));
+      } catch (e) {}
+
+      res.json({ success: true });
+    } catch (err: any) {
+      console.error('Delete Error:', err);
+      res.status(500).json({ success: false, message: err.message || 'Delete failed' });
+    }
   });
 
   // Media API
